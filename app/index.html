@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SETUR Paraipaba - Acesso</title>
+  <link rel="stylesheet" href="./src/style.css" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="glass-panel login-card">
+      <div class="login-logo">
+        <!-- Reference to the image one level up -->
+        <img src="/image.png" alt="SETUR Logo" id="logo-img"
+          onerror="this.src='https://via.placeholder.com/120?text=SETUR'" />
+        <h1 class="text-gradient">SETUR Paraipaba</h1>
+        <p>Sistema de Gestão e Dispensas</p>
+      </div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" class="form-control" placeholder="seu.email@pb.gov.br" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required />
+        </div>
+
+        <div id="login-error" class="error-msg hidden"></div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="login-btn">
+          <i data-lucide="log-in"></i> Entrar no Sistema
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+
+</html>
