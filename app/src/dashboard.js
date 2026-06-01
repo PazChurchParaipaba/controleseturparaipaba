@@ -215,7 +215,8 @@ async function handleNovaDispensa(e) {
 
     for (let i = 0; i < totalFiles; i++) {
       const file = files[i];
-      const filePath = `${pasta}/${Date.now()}_${file.name}`;
+      const sanitizedFileName = file.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const filePath = `${pasta}/${Date.now()}_${sanitizedFileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('documentos_setur')
