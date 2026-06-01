@@ -107,6 +107,20 @@ function setupModals() {
     const formAgenda = document.getElementById('form-agenda');
     formAgenda.addEventListener('submit', handleNovoCompromisso);
   }
+  
+  // Search Dispensas
+  const searchInput = document.getElementById('search-dispensas');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = window.dispensasData.filter(item => 
+        (item.titulo && item.titulo.toLowerCase().includes(term)) || 
+        (item.profiles && item.profiles.nome_completo && item.profiles.nome_completo.toLowerCase().includes(term)) ||
+        (item.pasta_storage && item.pasta_storage.toLowerCase().includes(term))
+      );
+      renderDispensas(filtered);
+    });
+  }
 }
 
 // --- Dispensas Logic ---
@@ -132,8 +146,18 @@ async function loadDispensas() {
   }
   
   window.dispensasData = data;
+  renderDispensas(data);
+}
+
+function renderDispensas(dataToRender) {
+  const listEl = document.getElementById('dispensas-list');
+  if (!dataToRender || dataToRender.length === 0) {
+    listEl.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma dispensa encontrada para esta busca.</td></tr>';
+    return;
+  }
+
   listEl.innerHTML = '';
-  data.forEach(item => {
+  dataToRender.forEach(item => {
     const tr = document.createElement('tr');
     const dateStr = new Date(item.data_registro).toLocaleDateString('pt-BR');
     const uploaderName = item.profiles ? item.profiles.nome_completo : 'Usuário';
@@ -148,7 +172,10 @@ async function loadDispensas() {
         }
       </td>
       <td>
-        <button class="btn-icon" title="Editar" onclick="editDispensa('${item.id}')"><i data-lucide="edit"></i></button>
+        <div style="display: flex; gap: 5px;">
+          <button class="btn-icon" title="Editar" onclick="editDispensa('${item.id}')"><i data-lucide="edit"></i></button>
+          <button class="btn-icon text-danger" title="Apagar" onclick="deleteDispensa('${item.id}')"><i data-lucide="trash"></i></button>
+        </div>
       </td>
     `;
     listEl.appendChild(tr);
@@ -255,6 +282,17 @@ window.editDispensa = (id) => {
   
   document.querySelector('#modal-dispensa h2').textContent = 'Editar Dispensa';
   document.getElementById('modal-dispensa').classList.add('active');
+};
+
+window.deleteDispensa = async (id) => {
+  if (!confirm('Tem certeza que deseja apagar esta dispensa?')) return;
+  
+  const { error } = await supabase.from('dispensas').delete().eq('id', id);
+  if (error) {
+    alert('Erro ao apagar: ' + error.message);
+  } else {
+    loadDispensas();
+  }
 };
 
 window.viewFiles = async (folder) => {
