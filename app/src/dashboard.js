@@ -391,7 +391,10 @@ async function loadAgenda() {
     div.style.borderLeft = '3px solid var(--primary)';
     
     div.innerHTML = `
-      <h3 style="font-size: 1rem; margin-bottom: 5px;">${item.titulo}</h3>
+      <h3 style="font-size: 1rem; margin-bottom: 5px; display: flex; align-items: center;">
+        ${item.titulo}
+        ${item.categoria ? `<span style="margin-left: 10px; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: normal; background: ${item.categoria === 'Turismo' ? 'rgba(0, 200, 255, 0.15)' : 'rgba(76, 175, 80, 0.15)'}; color: ${item.categoria === 'Turismo' ? '#4fc3f7' : '#81c784'}; border: 1px solid ${item.categoria === 'Turismo' ? 'rgba(0, 200, 255, 0.3)' : 'rgba(76, 175, 80, 0.3)'};"><i data-lucide="${item.categoria === 'Turismo' ? 'map' : 'leaf'}" style="width: 10px; margin-right: 3px; display: inline-block;"></i>${item.categoria}</span>` : ''}
+      </h3>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
         <i data-lucide="clock" style="width: 14px; vertical-align: middle;"></i> 
         ${start.toLocaleDateString('pt-BR')} às ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
@@ -414,6 +417,7 @@ async function handleNovoCompromisso(e) {
   e.preventDefault();
   
   const titulo = document.getElementById('agenda-titulo').value;
+  const categoria = document.getElementById('agenda-categoria').value;
   const descricao = document.getElementById('agenda-descricao').value;
   const inicio = document.getElementById('agenda-inicio').value;
   const fim = document.getElementById('agenda-fim').value;
@@ -431,6 +435,7 @@ async function handleNovoCompromisso(e) {
         .from('agenda')
         .update({ 
           titulo: titulo, 
+          categoria: categoria,
           descricao: descricao,
           data_hora_inicio: inicioIso,
           data_hora_fim: fimIso
@@ -443,6 +448,7 @@ async function handleNovoCompromisso(e) {
         .insert([
           { 
             titulo: titulo, 
+            categoria: categoria,
             descricao: descricao,
             data_hora_inicio: inicioIso,
             data_hora_fim: fimIso,
@@ -472,6 +478,9 @@ window.editAgenda = (id) => {
   
   editingAgendaId = id;
   document.getElementById('agenda-titulo').value = item.titulo;
+  if(document.getElementById('agenda-categoria')) {
+    document.getElementById('agenda-categoria').value = item.categoria || 'Turismo';
+  }
   document.getElementById('agenda-descricao').value = item.descricao || '';
   
   const formatDatetime = (isoStr) => {
