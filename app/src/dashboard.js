@@ -4,7 +4,9 @@ import { supabase } from './supabase.js';
 
 let currentUser = null;
 let editingAgendaId = null;
+let editingDispensaId = null;
 window.agendaData = [];
+window.dispensasData = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Auth Check customizado (localStorage)
@@ -65,6 +67,10 @@ function setupModals() {
   const cancelDispensa = document.getElementById('cancel-dispensa');
 
   btnNovaDispensa.addEventListener('click', () => {
+    editingDispensaId = null;
+    document.querySelector('#modal-dispensa h2').textContent = 'Nova Dispensa';
+    document.getElementById('form-dispensa').reset();
+    document.getElementById('dispensa-arquivos').required = true;
     // Auto fill pasta with year/month format
     const date = new Date();
     document.getElementById('dispensa-pasta').value = `${date.getFullYear()}/${date.toLocaleString('pt-BR', { month: 'long' })}`;
@@ -106,7 +112,7 @@ function setupModals() {
 // --- Dispensas Logic ---
 async function loadDispensas() {
   const listEl = document.getElementById('dispensas-list');
-  listEl.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
+  listEl.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
   
   const { data, error } = await supabase
     .from('dispensas')
@@ -115,15 +121,17 @@ async function loadDispensas() {
     
   if (error) {
     console.error('Error loading dispensas:', error);
-    listEl.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro do banco: ${error.message || error.details || JSON.stringify(error)}</td></tr>`;
+    listEl.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Erro do banco: ${error.message || error.details || JSON.stringify(error)}</td></tr>`;
     return;
   }
   
   if (!data || data.length === 0) {
-    listEl.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma dispensa registrada.</td></tr>';
+    listEl.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma dispensa registrada.</td></tr>';
+    window.dispensasData = [];
     return;
   }
   
+  window.dispensasData = data;
   listEl.innerHTML = '';
   data.forEach(item => {
     const tr = document.createElement('tr');
@@ -133,7 +141,6 @@ async function loadDispensas() {
     tr.innerHTML = `
       <td>${dateStr}</td>
       <td><strong>${item.titulo}</strong><br><small class="text-muted">Por: ${uploaderName}</small></td>
-      <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
       <td>
         ${item.pasta_storage ? 
           `<button class="btn-icon" title="Ver Arquivos" onclick="viewFiles('${item.pasta_storage}')"><i data-lucide="folder"></i> ${item.pasta_storage}</button>` : 
@@ -141,7 +148,7 @@ async function loadDispensas() {
         }
       </td>
       <td>
-        <button class="btn-icon" title="Editar"><i data-lucide="edit"></i></button>
+        <button class="btn-icon" title="Editar" onclick="editDispensa('${item.id}')"><i data-lucide="edit"></i></button>
       </td>
     `;
     listEl.appendChild(tr);
@@ -158,7 +165,7 @@ async function handleNovaDispensa(e) {
   const filesInput = document.getElementById('dispensa-arquivos');
   const files = filesInput.files;
   
-  if (files.length === 0) {
+  if (!editingDispensaId && files.length === 0) {
     alert('Selecione pelo menos um arquivo.');
     return;
   }
@@ -185,7 +192,7 @@ async function handleNovaDispensa(e) {
       
       const { error: uploadError } = await supabase.storage
         .from('documentos_setur')
-        .upload(filePath, file);
+        .upload(filePath, file, { contentType: file.type || 'application/octet-stream' });
 
       if (uploadError) {
         console.error('Upload Error:', uploadError);
@@ -196,19 +203,31 @@ async function handleNovaDispensa(e) {
       progressBar.style.width = `${(uploaded / totalFiles) * 100}%`;
     }
 
-    // Insert into Database
-    const { error: dbError } = await supabase
-      .from('dispensas')
-      .insert([
-        { 
+    // Insert or Update Database
+    if (editingDispensaId) {
+      const { error: dbError } = await supabase
+        .from('dispensas')
+        .update({ 
           titulo: titulo, 
-          pasta_storage: pasta,
-          user_id: currentUser.id,
-          status: 'Pendente'
-        }
-      ]);
+          pasta_storage: pasta
+        })
+        .eq('id', editingDispensaId);
 
-    if (dbError) throw dbError;
+      if (dbError) throw dbError;
+    } else {
+      const { error: dbError } = await supabase
+        .from('dispensas')
+        .insert([
+          { 
+            titulo: titulo, 
+            pasta_storage: pasta,
+            user_id: currentUser.id,
+            status: 'Pendente'
+          }
+        ]);
+
+      if (dbError) throw dbError;
+    }
 
     // Success
     document.getElementById('modal-dispensa').classList.remove('active');
@@ -224,6 +243,19 @@ async function handleNovaDispensa(e) {
     progressBar.style.width = '0%';
   }
 }
+
+window.editDispensa = (id) => {
+  const item = window.dispensasData.find(x => x.id === id);
+  if (!item) return;
+  
+  editingDispensaId = id;
+  document.getElementById('dispensa-titulo').value = item.titulo;
+  document.getElementById('dispensa-pasta').value = item.pasta_storage || '';
+  document.getElementById('dispensa-arquivos').required = false;
+  
+  document.querySelector('#modal-dispensa h2').textContent = 'Editar Dispensa';
+  document.getElementById('modal-dispensa').classList.add('active');
+};
 
 window.viewFiles = async (folder) => {
   const modalFiles = document.getElementById('modal-files');
@@ -272,7 +304,7 @@ window.viewFiles = async (folder) => {
       <span class="truncate" style="max-width: 250px;">${file.name}</span>
       <div style="display: flex; gap: 5px;">
         <a href="${url}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 4px 10px;">
-          <i data-lucide="download"></i> Baixar
+          <i data-lucide="eye"></i> Visualizar
         </a>
         <button class="btn btn-danger btn-sm" style="padding: 4px 10px;" onclick="deleteFile('${folder}', '${file.name}')">
           <i data-lucide="trash"></i>
