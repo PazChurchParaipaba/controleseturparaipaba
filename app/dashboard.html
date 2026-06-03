@@ -22,11 +22,14 @@
         </div>
 
         <nav class="sidebar-nav">
-          <button class="nav-item active" data-target="dispensas">
-            <i data-lucide="folder-open"></i> Dispensas
+          <button class="nav-item active" data-target="arquivos">
+            <i data-lucide="folder-open"></i> Arquivos
           </button>
           <button class="nav-item" data-target="agenda">
             <i data-lucide="calendar"></i> Agenda
+          </button>
+          <button class="nav-item" data-target="tarefas">
+            <i data-lucide="check-square"></i> Tarefas
           </button>
         </nav>
 
@@ -44,19 +47,19 @@
       <!-- Main Content -->
       <main class="main-content">
         <header class="topbar">
-          <h1 id="page-title">Dispensas de Licença</h1>
+          <h1 id="page-title">Arquivos & Projetos</h1>
         </header>
 
         <div class="content-area" id="content-area">
-          <!-- Dispensas Module -->
-          <div id="module-dispensas" class="module active">
+          <!-- Arquivos Module -->
+          <div id="module-arquivos" class="module active">
             <div class="module-header">
               <div class="search-box">
                 <i data-lucide="search"></i>
-                <input type="text" id="search-dispensas" placeholder="Buscar dispensas..." class="form-control" />
+                <input type="text" id="search-arquivos" placeholder="Buscar arquivos..." class="form-control" />
               </div>
-              <button class="btn btn-primary" id="btn-nova-dispensa">
-                <i data-lucide="plus"></i> Nova Dispensa
+              <button class="btn btn-primary" id="btn-novo-arquivo">
+                <i data-lucide="plus"></i> Novo Arquivo
               </button>
             </div>
             
@@ -65,13 +68,14 @@
                 <thead>
                   <tr>
                     <th>Data</th>
-                    <th>Título</th>
+                    <th>Categoria</th>
+                    <th>Título/Descrição</th>
                     <th>Arquivos</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
-                <tbody id="dispensas-list">
-                  <tr><td colspan="4" class="text-center">Carregando...</td></tr>
+                <tbody id="arquivos-list">
+                  <tr><td colspan="5" class="text-center">Carregando...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -92,30 +96,75 @@
               </div>
             </div>
           </div>
+
+          <!-- Tarefas Module -->
+          <div id="module-tarefas" class="module hidden">
+            <div class="module-header">
+              <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="search-tarefas" placeholder="Buscar tarefas..." class="form-control" />
+              </div>
+              <button class="btn btn-primary" id="btn-nova-tarefa">
+                <i data-lucide="plus"></i> Nova Tarefa
+              </button>
+            </div>
+            
+            <div class="glass-panel mt-1">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Tarefa</th>
+                    <th>Responsável</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tarefas-list">
+                  <tr><td colspan="4" class="text-center">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </main>
     </div>
 
-    <!-- Modal Nova Dispensa -->
-    <div class="modal-overlay" id="modal-dispensa">
+    <!-- Modal Novo Arquivo -->
+    <div class="modal-overlay" id="modal-arquivo">
       <div class="modal-content glass-panel">
         <div class="modal-header">
-          <h2>Nova Dispensa</h2>
-          <button class="btn-icon" id="close-modal-dispensa"><i data-lucide="x"></i></button>
+          <h2>Novo Arquivo</h2>
+          <button class="btn-icon" id="close-modal-arquivo"><i data-lucide="x"></i></button>
         </div>
-        <form id="form-dispensa">
+        <form id="form-arquivo">
           <div class="form-group">
-            <label>Título da Dispensa</label>
-            <input type="text" id="dispensa-titulo" class="form-control" required placeholder="Ex: Construção Hotel X" />
+            <label>Título / Identificação</label>
+            <input type="text" id="arquivo-titulo" class="form-control" required placeholder="Ex: Construção Hotel X" />
+          </div>
+          <div class="form-group">
+            <label>Categoria</label>
+            <select id="arquivo-categoria" class="form-control" required>
+              <option value="Dispensa">Dispensa de Licença</option>
+              <option value="Drone">Imagens de Drone</option>
+              <option value="Projeto">Projeto/Planta</option>
+              <option value="Outros">Outros Documentos</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Pasta no Storage (Ex: 2024/Maio/HotelX)</label>
-            <input type="text" id="dispensa-pasta" class="form-control" required placeholder="Pasta para organizar os arquivos" />
+            <input type="text" id="arquivo-pasta" class="form-control" required placeholder="Pasta para organizar os arquivos" />
           </div>
           <div class="form-group">
-            <label>Arquivos (PDF, Word, etc)</label>
-            <input type="file" id="dispensa-arquivos" class="form-control" multiple required />
-            <small class="text-muted" style="display:block; margin-top:5px;">Você pode selecionar múltiplos arquivos.</small>
+            <label>Descrição / Observações</label>
+            <textarea id="arquivo-descricao" class="form-control" rows="2" placeholder="Detalhes adicionais..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Arquivos ou Pastas Inteiras</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="file" id="arquivo-arquivos" class="form-control" multiple style="flex: 1;" title="Selecionar Arquivos" />
+              <input type="file" id="arquivo-pastas" class="form-control" webkitdirectory directory multiple style="flex: 1;" title="Selecionar Pasta Inteira" />
+            </div>
+            <small class="text-muted" style="display:block; margin-top:5px;">Selecione arquivos avulsos ou uma pasta inteira com vários arquivos.</small>
           </div>
           
           <div id="upload-progress" class="hidden" style="margin-bottom: 15px;">
@@ -126,8 +175,8 @@
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-            <button type="button" class="btn btn-secondary" id="cancel-dispensa">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="save-dispensa">Salvar e Enviar Arquivos</button>
+            <button type="button" class="btn btn-secondary" id="cancel-arquivo">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="save-arquivo">Salvar e Enviar Arquivos</button>
           </div>
         </form>
       </div>
@@ -169,6 +218,46 @@
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
             <button type="button" class="btn btn-secondary" id="cancel-agenda">Cancelar</button>
             <button type="submit" class="btn btn-primary" id="save-agenda">Agendar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Nova Tarefa -->
+    <div class="modal-overlay" id="modal-tarefa">
+      <div class="modal-content glass-panel">
+        <div class="modal-header">
+          <h2>Nova Tarefa</h2>
+          <button class="btn-icon" id="close-modal-tarefa"><i data-lucide="x"></i></button>
+        </div>
+        <form id="form-tarefa">
+          <div class="form-group">
+            <label>Título da Tarefa</label>
+            <input type="text" id="tarefa-titulo" class="form-control" required placeholder="Ex: Analisar imagens do drone" />
+          </div>
+          <div class="form-group">
+            <label>Descrição</label>
+            <textarea id="tarefa-descricao" class="form-control" rows="3" placeholder="Detalhes da tarefa..."></textarea>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+              <label>Status</label>
+              <select id="tarefa-status" class="form-control" required>
+                <option value="Pendente">Pendente</option>
+                <option value="Em Andamento">Em Andamento</option>
+                <option value="Concluída">Concluída</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>Responsável</label>
+              <select id="tarefa-assignee" class="form-control">
+                <option value="">Não atribuído</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" id="cancel-tarefa">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="save-tarefa">Salvar Tarefa</button>
           </div>
         </form>
       </div>

@@ -4,9 +4,11 @@ import { supabase } from './supabase.js';
 
 let currentUser = null;
 let editingAgendaId = null;
-let editingDispensaId = null;
+let editingArquivoId = null;
+let editingTarefaId = null;
 window.agendaData = [];
-window.dispensasData = [];
+window.arquivosData = [];
+window.tarefasData = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Auth Check customizado (localStorage)
@@ -26,8 +28,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pageTitle = document.getElementById('page-title');
 
   const titles = {
-    'dispensas': 'Dispensas de Licença',
-    'agenda': 'Agenda de Compromissos'
+    'arquivos': 'Arquivos & Projetos',
+    'agenda': 'Agenda de Compromissos',
+    'tarefas': 'Tarefas Internas'
   };
 
   navItems.forEach(item => {
@@ -43,8 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       pageTitle.textContent = titles[target];
       
-      if(target === 'dispensas') loadDispensas();
+      if(target === 'arquivos') loadArquivos();
       if(target === 'agenda') loadAgenda();
+      if(target === 'tarefas') loadTarefas();
     });
   });
 
@@ -55,33 +59,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Init default module
-  loadDispensas();
+  loadArquivos();
   setupModals();
 });
 
 // --- Modals Setup ---
 function setupModals() {
-  const modalDispensa = document.getElementById('modal-dispensa');
-  const btnNovaDispensa = document.getElementById('btn-nova-dispensa');
-  const closeDispensa = document.getElementById('close-modal-dispensa');
-  const cancelDispensa = document.getElementById('cancel-dispensa');
+  const modalArquivo = document.getElementById('modal-arquivo');
+  const btnNovoArquivo = document.getElementById('btn-novo-arquivo');
+  const closeArquivo = document.getElementById('close-modal-arquivo');
+  const cancelArquivo = document.getElementById('cancel-arquivo');
 
-  btnNovaDispensa.addEventListener('click', () => {
-    editingDispensaId = null;
-    document.querySelector('#modal-dispensa h2').textContent = 'Nova Dispensa';
-    document.getElementById('form-dispensa').reset();
-    document.getElementById('dispensa-arquivos').required = true;
+  btnNovoArquivo.addEventListener('click', () => {
+    editingArquivoId = null;
+    document.querySelector('#modal-arquivo h2').textContent = 'Novo Arquivo';
+    document.getElementById('form-arquivo').reset();
+    document.getElementById('arquivo-arquivos').required = true;
     // Auto fill pasta with year/month format
     const date = new Date();
-    document.getElementById('dispensa-pasta').value = `${date.getFullYear()}/${date.toLocaleString('pt-BR', { month: 'long' })}`;
-    modalDispensa.classList.add('active');
+    document.getElementById('arquivo-pasta').value = `${date.getFullYear()}/${date.toLocaleString('pt-BR', { month: 'long' })}`;
+    modalArquivo.classList.add('active');
   });
 
-  closeDispensa.addEventListener('click', () => modalDispensa.classList.remove('active'));
-  cancelDispensa.addEventListener('click', () => modalDispensa.classList.remove('active'));
+  closeArquivo.addEventListener('click', () => modalArquivo.classList.remove('active'));
+  cancelArquivo.addEventListener('click', () => modalArquivo.classList.remove('active'));
 
-  const formDispensa = document.getElementById('form-dispensa');
-  formDispensa.addEventListener('submit', handleNovaDispensa);
+  const formArquivo = document.getElementById('form-arquivo');
+  formArquivo.addEventListener('submit', handleNovoArquivo);
 
   // Files Modal
   const modalFiles = document.getElementById('modal-files');
@@ -108,51 +112,106 @@ function setupModals() {
     formAgenda.addEventListener('submit', handleNovoCompromisso);
   }
   
-  // Search Dispensas
-  const searchInput = document.getElementById('search-dispensas');
+  // Search Arquivos
+  const searchInput = document.getElementById('search-arquivos');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase();
-      const filtered = window.dispensasData.filter(item => 
+      const filtered = window.arquivosData.filter(item => 
         (item.titulo && item.titulo.toLowerCase().includes(term)) || 
+        (item.descricao && item.descricao.toLowerCase().includes(term)) ||
+        (item.categoria && item.categoria.toLowerCase().includes(term)) ||
         (item.profiles && item.profiles.nome_completo && item.profiles.nome_completo.toLowerCase().includes(term)) ||
         (item.pasta_storage && item.pasta_storage.toLowerCase().includes(term))
       );
-      renderDispensas(filtered);
+      renderArquivos(filtered);
+    });
+  }
+
+  // Tarefas Modal Setup
+  const modalTarefa = document.getElementById('modal-tarefa');
+  const btnNovaTarefa = document.getElementById('btn-nova-tarefa');
+  const closeTarefa = document.getElementById('close-modal-tarefa');
+  const cancelTarefa = document.getElementById('cancel-tarefa');
+  
+  if (btnNovaTarefa) {
+    btnNovaTarefa.addEventListener('click', async () => {
+      editingTarefaId = null;
+      document.querySelector('#modal-tarefa h2').textContent = 'Nova Tarefa';
+      document.getElementById('form-tarefa').reset();
+      await populateAssignees();
+      modalTarefa.classList.add('active');
+    });
+    closeTarefa.addEventListener('click', () => modalTarefa.classList.remove('active'));
+    cancelTarefa.addEventListener('click', () => modalTarefa.classList.remove('active'));
+    
+    const formTarefa = document.getElementById('form-tarefa');
+    formTarefa.addEventListener('submit', handleNovaTarefa);
+  }
+
+  // Search Tarefas
+  const searchTarefas = document.getElementById('search-tarefas');
+  if (searchTarefas) {
+    searchTarefas.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = window.tarefasData.filter(item => 
+        (item.titulo && item.titulo.toLowerCase().includes(term)) ||
+        (item.descricao && item.descricao.toLowerCase().includes(term)) ||
+        (item.assignee && item.assignee.nome_completo && item.assignee.nome_completo.toLowerCase().includes(term))
+      );
+      renderTarefas(filtered);
     });
   }
 }
 
-// --- Dispensas Logic ---
-async function loadDispensas() {
-  const listEl = document.getElementById('dispensas-list');
-  listEl.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
+async function populateAssignees(selectedId = null) {
+  const select = document.getElementById('tarefa-assignee');
+  select.innerHTML = '<option value="">Não atribuído</option>';
+  
+  const { data, error } = await supabase.from('profiles').select('id, nome_completo');
+  if (data) {
+    data.forEach(user => {
+      const option = document.createElement('option');
+      option.value = user.id;
+      option.textContent = user.nome_completo || 'Usuário';
+      if (selectedId && selectedId === user.id) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+  }
+}
+
+// --- Arquivos Logic ---
+async function loadArquivos() {
+  const listEl = document.getElementById('arquivos-list');
+  listEl.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
   
   const { data, error } = await supabase
-    .from('dispensas')
+    .from('arquivos')
     .select('*, profiles(nome_completo)')
     .order('data_registro', { ascending: false });
     
   if (error) {
-    console.error('Error loading dispensas:', error);
-    listEl.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Erro do banco: ${error.message || error.details || JSON.stringify(error)}</td></tr>`;
+    console.error('Error loading arquivos:', error);
+    listEl.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro do banco: ${error.message || error.details || JSON.stringify(error)}</td></tr>`;
     return;
   }
   
   if (!data || data.length === 0) {
-    listEl.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma dispensa registrada.</td></tr>';
-    window.dispensasData = [];
+    listEl.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum arquivo registrado.</td></tr>';
+    window.arquivosData = [];
     return;
   }
   
-  window.dispensasData = data;
-  renderDispensas(data);
+  window.arquivosData = data;
+  renderArquivos(data);
 }
 
-function renderDispensas(dataToRender) {
-  const listEl = document.getElementById('dispensas-list');
+function renderArquivos(dataToRender) {
+  const listEl = document.getElementById('arquivos-list');
   if (!dataToRender || dataToRender.length === 0) {
-    listEl.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma dispensa encontrada para esta busca.</td></tr>';
+    listEl.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum arquivo encontrado para esta busca.</td></tr>';
     return;
   }
 
@@ -164,7 +223,12 @@ function renderDispensas(dataToRender) {
     
     tr.innerHTML = `
       <td>${dateStr}</td>
-      <td><strong>${item.titulo}</strong><br><small class="text-muted">Por: ${uploaderName}</small></td>
+      <td><span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">${item.categoria || 'Outros'}</span></td>
+      <td>
+        <strong>${item.titulo}</strong>
+        ${item.descricao ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 0 0;">${item.descricao}</p>` : ''}
+        <small class="text-muted" style="display:block; margin-top:2px;">Por: ${uploaderName}</small>
+      </td>
       <td>
         ${item.pasta_storage ? 
           `<button class="btn-icon" title="Ver Arquivos" onclick="viewFiles('${item.pasta_storage}')"><i data-lucide="folder"></i> ${item.pasta_storage}</button>` : 
@@ -173,8 +237,8 @@ function renderDispensas(dataToRender) {
       </td>
       <td>
         <div style="display: flex; gap: 5px;">
-          <button class="btn-icon" title="Editar" onclick="editDispensa('${item.id}')"><i data-lucide="edit"></i></button>
-          <button class="btn-icon text-danger" title="Apagar" onclick="deleteDispensa('${item.id}')"><i data-lucide="trash"></i></button>
+          <button class="btn-icon" title="Editar" onclick="editArquivo('${item.id}')"><i data-lucide="edit"></i></button>
+          <button class="btn-icon text-danger" title="Apagar" onclick="deleteArquivo('${item.id}')"><i data-lucide="trash"></i></button>
         </div>
       </td>
     `;
@@ -184,23 +248,29 @@ function renderDispensas(dataToRender) {
   if(window.lucide) window.lucide.createIcons();
 }
 
-async function handleNovaDispensa(e) {
+async function handleNovoArquivo(e) {
   e.preventDefault();
   
-  const titulo = document.getElementById('dispensa-titulo').value;
-  let pasta = document.getElementById('dispensa-pasta').value;
-  const filesInput = document.getElementById('dispensa-arquivos');
-  const files = filesInput.files;
+  const titulo = document.getElementById('arquivo-titulo').value;
+  const descricao = document.getElementById('arquivo-descricao').value;
+  const categoria = document.getElementById('arquivo-categoria').value;
+  let pasta = document.getElementById('arquivo-pasta').value;
   
-  if (!editingDispensaId && files.length === 0) {
-    alert('Selecione pelo menos um arquivo.');
+  const filesAvulsos = document.getElementById('arquivo-arquivos').files;
+  const filesPasta = document.getElementById('arquivo-pastas').files;
+  
+  // Combine all files from both inputs
+  const allFiles = [...filesAvulsos, ...filesPasta];
+  
+  if (!editingArquivoId && allFiles.length === 0) {
+    alert('Selecione pelo menos um arquivo ou pasta.');
     return;
   }
 
   // Sanitize folder path
   pasta = pasta.trim().replace(/[^a-zA-Z0-9/_-]/g, '_');
   
-  const saveBtn = document.getElementById('save-dispensa');
+  const saveBtn = document.getElementById('save-arquivo');
   const uploadProgress = document.getElementById('upload-progress');
   const progressBar = document.getElementById('progress-bar');
   
@@ -210,11 +280,11 @@ async function handleNovaDispensa(e) {
 
   try {
     // Upload files to Supabase Storage
-    const totalFiles = files.length;
+    const totalFiles = allFiles.length;
     let uploaded = 0;
 
     for (let i = 0; i < totalFiles; i++) {
-      const file = files[i];
+      const file = allFiles[i];
       const sanitizedFileName = file.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9.\-_]/g, '_');
       const filePath = `${pasta}/${Date.now()}_${sanitizedFileName}`;
       
@@ -232,22 +302,26 @@ async function handleNovaDispensa(e) {
     }
 
     // Insert or Update Database
-    if (editingDispensaId) {
+    if (editingArquivoId) {
       const { error: dbError } = await supabase
-        .from('dispensas')
+        .from('arquivos')
         .update({ 
           titulo: titulo, 
+          descricao: descricao,
+          categoria: categoria,
           pasta_storage: pasta
         })
-        .eq('id', editingDispensaId);
+        .eq('id', editingArquivoId);
 
       if (dbError) throw dbError;
     } else {
       const { error: dbError } = await supabase
-        .from('dispensas')
+        .from('arquivos')
         .insert([
           { 
             titulo: titulo, 
+            descricao: descricao,
+            categoria: categoria,
             pasta_storage: pasta,
             user_id: currentUser.id,
             status: 'Pendente'
@@ -258,9 +332,9 @@ async function handleNovaDispensa(e) {
     }
 
     // Success
-    document.getElementById('modal-dispensa').classList.remove('active');
-    document.getElementById('form-dispensa').reset();
-    loadDispensas();
+    document.getElementById('modal-arquivo').classList.remove('active');
+    document.getElementById('form-arquivo').reset();
+    loadArquivos();
 
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -272,27 +346,30 @@ async function handleNovaDispensa(e) {
   }
 }
 
-window.editDispensa = (id) => {
-  const item = window.dispensasData.find(x => x.id === id);
+window.editArquivo = (id) => {
+  const item = window.arquivosData.find(x => x.id === id);
   if (!item) return;
   
-  editingDispensaId = id;
-  document.getElementById('dispensa-titulo').value = item.titulo;
-  document.getElementById('dispensa-pasta').value = item.pasta_storage || '';
-  document.getElementById('dispensa-arquivos').required = false;
+  editingArquivoId = id;
+  document.getElementById('arquivo-titulo').value = item.titulo;
+  document.getElementById('arquivo-categoria').value = item.categoria || 'Dispensa';
+  document.getElementById('arquivo-descricao').value = item.descricao || '';
+  document.getElementById('arquivo-pasta').value = item.pasta_storage || '';
+  document.getElementById('arquivo-arquivos').required = false;
+  document.getElementById('arquivo-pastas').required = false;
   
-  document.querySelector('#modal-dispensa h2').textContent = 'Editar Dispensa';
-  document.getElementById('modal-dispensa').classList.add('active');
+  document.querySelector('#modal-arquivo h2').textContent = 'Editar Arquivo';
+  document.getElementById('modal-arquivo').classList.add('active');
 };
 
-window.deleteDispensa = async (id) => {
-  if (!confirm('Tem certeza que deseja apagar esta dispensa?')) return;
+window.deleteArquivo = async (id) => {
+  if (!confirm('Tem certeza que deseja apagar este arquivo?')) return;
   
-  const { error } = await supabase.from('dispensas').delete().eq('id', id);
+  const { error } = await supabase.from('arquivos').delete().eq('id', id);
   if (error) {
     alert('Erro ao apagar: ' + error.message);
   } else {
-    loadDispensas();
+    loadArquivos();
   }
 };
 
@@ -517,5 +594,151 @@ window.deleteFile = async (folder, fileName) => {
     alert('Erro ao apagar arquivo: ' + error.message);
   } else {
     window.viewFiles(folder);
+  }
+};
+
+// --- Tarefas Logic ---
+async function loadTarefas() {
+  const listEl = document.getElementById('tarefas-list');
+  listEl.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
+  
+  const { data, error } = await supabase
+    .from('tarefas')
+    .select(`
+      *, 
+      creator:profiles!tarefas_user_id_fkey(nome_completo),
+      assignee:profiles!tarefas_assignee_id_fkey(nome_completo)
+    `)
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error('Error loading tarefas:', error);
+    listEl.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Erro ao carregar tarefas.</td></tr>`;
+    return;
+  }
+  
+  if (!data || data.length === 0) {
+    listEl.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma tarefa encontrada.</td></tr>';
+    window.tarefasData = [];
+    return;
+  }
+  
+  window.tarefasData = data;
+  renderTarefas(data);
+}
+
+function renderTarefas(dataToRender) {
+  const listEl = document.getElementById('tarefas-list');
+  if (!dataToRender || dataToRender.length === 0) {
+    listEl.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma tarefa para esta busca.</td></tr>';
+    return;
+  }
+
+  listEl.innerHTML = '';
+  dataToRender.forEach(item => {
+    const tr = document.createElement('tr');
+    
+    let statusColor = 'var(--text-muted)';
+    if(item.status === 'Em Andamento') statusColor = 'var(--primary)';
+    if(item.status === 'Concluída') statusColor = '#4caf50';
+    
+    const assigneeName = item.assignee ? item.assignee.nome_completo : 'Não atribuído';
+    const creatorName = item.creator ? item.creator.nome_completo : 'Usuário';
+
+    tr.innerHTML = `
+      <td>
+        <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; background: ${statusColor}22; color: ${statusColor}; border: 1px solid ${statusColor}55;">
+          ${item.status}
+        </span>
+      </td>
+      <td>
+        <strong>${item.titulo}</strong>
+        ${item.descricao ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 0 0;">${item.descricao}</p>` : ''}
+        <small class="text-muted" style="display:block; margin-top:2px;">Criado por: ${creatorName}</small>
+      </td>
+      <td>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <i data-lucide="user" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+          ${assigneeName}
+        </div>
+      </td>
+      <td>
+        <div style="display: flex; gap: 5px;">
+          <button class="btn-icon" title="Editar" onclick="editTarefa('${item.id}')"><i data-lucide="edit"></i></button>
+          <button class="btn-icon text-danger" title="Apagar" onclick="deleteTarefa('${item.id}')"><i data-lucide="trash"></i></button>
+        </div>
+      </td>
+    `;
+    listEl.appendChild(tr);
+  });
+  
+  if(window.lucide) window.lucide.createIcons();
+}
+
+async function handleNovaTarefa(e) {
+  e.preventDefault();
+  
+  const titulo = document.getElementById('tarefa-titulo').value;
+  const descricao = document.getElementById('tarefa-descricao').value;
+  const status = document.getElementById('tarefa-status').value;
+  const assignee_id = document.getElementById('tarefa-assignee').value || null;
+  
+  const saveBtn = document.getElementById('save-tarefa');
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = 'Salvando...';
+  
+  try {
+    if (editingTarefaId) {
+      const { error } = await supabase
+        .from('tarefas')
+        .update({ 
+          titulo, descricao, status, assignee_id 
+        })
+        .eq('id', editingTarefaId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('tarefas')
+        .insert([{ 
+          titulo, descricao, status, assignee_id, user_id: currentUser.id
+        }]);
+      if (error) throw error;
+    }
+
+    document.getElementById('modal-tarefa').classList.remove('active');
+    document.getElementById('form-tarefa').reset();
+    loadTarefas();
+
+  } catch (err) {
+    alert('Erro ao salvar tarefa: ' + err.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = 'Salvar Tarefa';
+  }
+}
+
+window.editTarefa = async (id) => {
+  const item = window.tarefasData.find(x => x.id === id);
+  if (!item) return;
+  
+  editingTarefaId = id;
+  document.getElementById('tarefa-titulo').value = item.titulo;
+  document.getElementById('tarefa-descricao').value = item.descricao || '';
+  document.getElementById('tarefa-status').value = item.status || 'Pendente';
+  
+  await populateAssignees(item.assignee_id);
+  
+  document.querySelector('#modal-tarefa h2').textContent = 'Editar Tarefa';
+  document.getElementById('modal-tarefa').classList.add('active');
+};
+
+window.deleteTarefa = async (id) => {
+  if (!confirm('Tem certeza que deseja apagar esta tarefa?')) return;
+  
+  const { error } = await supabase.from('tarefas').delete().eq('id', id);
+  if (error) {
+    alert('Erro ao apagar: ' + error.message);
+  } else {
+    loadTarefas();
   }
 };
