@@ -139,7 +139,6 @@ function setupModals() {
       editingTarefaId = null;
       document.querySelector('#modal-tarefa h2').textContent = 'Nova Tarefa';
       document.getElementById('form-tarefa').reset();
-      await populateAssignees();
       modalTarefa.classList.add('active');
     });
     closeTarefa.addEventListener('click', () => modalTarefa.classList.remove('active'));
@@ -156,30 +155,13 @@ function setupModals() {
       const term = e.target.value.toLowerCase();
       const filtered = window.tarefasData.filter(item => 
         (item.titulo && item.titulo.toLowerCase().includes(term)) ||
-        (item.descricao && item.descricao.toLowerCase().includes(term)) ||
-        (item.assignee && item.assignee.nome_completo && item.assignee.nome_completo.toLowerCase().includes(term))
+        (item.descricao && item.descricao.toLowerCase().includes(term))
       );
       renderTarefas(filtered);
     });
   }
 }
 
-async function populateAssignees(selectedId = null) {
-  const select = document.getElementById('tarefa-assignee');
-  select.innerHTML = '<option value="">Não atribuído</option>';
-  
-  const { data, error } = await supabase.from('profiles').select('id, nome_completo');
-  if (data) {
-    data.forEach(user => {
-      const option = document.createElement('option');
-      option.value = user.id;
-      option.textContent = user.nome_completo || 'Usuário';
-      if (selectedId && selectedId === user.id) {
-        option.selected = true;
-      }
-      select.appendChild(option);
-    });
-  }
 }
 
 // --- Arquivos Logic ---
@@ -606,8 +588,7 @@ async function loadTarefas() {
     .from('tarefas')
     .select(`
       *, 
-      creator:profiles!tarefas_user_id_fkey(nome_completo),
-      assignee:profiles!tarefas_assignee_id_fkey(nome_completo)
+      creator:profiles!tarefas_user_id_fkey(nome_completo)
     `)
     .order('created_at', { ascending: false });
     
@@ -642,7 +623,6 @@ function renderTarefas(dataToRender) {
     if(item.status === 'Em Andamento') statusColor = 'var(--primary)';
     if(item.status === 'Concluída') statusColor = '#4caf50';
     
-    const assigneeName = item.assignee ? item.assignee.nome_completo : 'Não atribuído';
     const creatorName = item.creator ? item.creator.nome_completo : 'Usuário';
 
     tr.innerHTML = `
@@ -655,12 +635,6 @@ function renderTarefas(dataToRender) {
         <strong>${item.titulo}</strong>
         ${item.descricao ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 0 0;">${item.descricao}</p>` : ''}
         <small class="text-muted" style="display:block; margin-top:2px;">Criado por: ${creatorName}</small>
-      </td>
-      <td>
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <i data-lucide="user" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-          ${assigneeName}
-        </div>
       </td>
       <td>
         <div style="display: flex; gap: 5px;">
@@ -681,7 +655,6 @@ async function handleNovaTarefa(e) {
   const titulo = document.getElementById('tarefa-titulo').value;
   const descricao = document.getElementById('tarefa-descricao').value;
   const status = document.getElementById('tarefa-status').value;
-  const assignee_id = document.getElementById('tarefa-assignee').value || null;
   
   const saveBtn = document.getElementById('save-tarefa');
   saveBtn.disabled = true;
@@ -692,7 +665,7 @@ async function handleNovaTarefa(e) {
       const { error } = await supabase
         .from('tarefas')
         .update({ 
-          titulo, descricao, status, assignee_id 
+          titulo, descricao, status 
         })
         .eq('id', editingTarefaId);
       if (error) throw error;
@@ -700,7 +673,7 @@ async function handleNovaTarefa(e) {
       const { error } = await supabase
         .from('tarefas')
         .insert([{ 
-          titulo, descricao, status, assignee_id, user_id: currentUser.id
+          titulo, descricao, status, user_id: currentUser.id
         }]);
       if (error) throw error;
     }
@@ -725,8 +698,6 @@ window.editTarefa = async (id) => {
   document.getElementById('tarefa-titulo').value = item.titulo;
   document.getElementById('tarefa-descricao').value = item.descricao || '';
   document.getElementById('tarefa-status').value = item.status || 'Pendente';
-  
-  await populateAssignees(item.assignee_id);
   
   document.querySelector('#modal-tarefa h2').textContent = 'Editar Tarefa';
   document.getElementById('modal-tarefa').classList.add('active');

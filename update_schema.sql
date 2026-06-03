@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS tarefas (
   titulo TEXT NOT NULL,
   descricao TEXT,
   status TEXT NOT NULL DEFAULT 'Pendente', -- Pendente, Em Andamento, Concluída
-  assignee_id UUID REFERENCES profiles(id), -- Quem está responsável (pode ser nulo)
   user_id UUID REFERENCES profiles(id) NOT NULL, -- Quem criou a tarefa
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
