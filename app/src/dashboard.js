@@ -162,8 +162,6 @@ function setupModals() {
   }
 }
 
-}
-
 // --- Arquivos Logic ---
 async function loadArquivos() {
   const listEl = document.getElementById('arquivos-list');
