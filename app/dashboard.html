@@ -22,8 +22,14 @@
         </div>
 
         <nav class="sidebar-nav">
-          <button class="nav-item active" data-target="arquivos">
-            <i data-lucide="folder-open"></i> Arquivos
+          <button class="nav-item active" data-target="licenciamento">
+            <i data-lucide="folder-open"></i> Licenciamento
+          </button>
+          <button class="nav-item" data-target="fiscalizacao">
+            <i data-lucide="file-warning"></i> Fiscalização
+          </button>
+          <button class="nav-item" data-target="educacao">
+            <i data-lucide="book-open"></i> Educação Ambiental
           </button>
           <button class="nav-item" data-target="agenda">
             <i data-lucide="calendar"></i> Agenda
@@ -51,14 +57,14 @@
         </header>
 
         <div class="content-area" id="content-area">
-          <!-- Arquivos Module -->
-          <div id="module-arquivos" class="module active">
+          <!-- Licenciamento Module -->
+          <div id="module-licenciamento" class="module active">
             <div class="module-header">
               <div class="search-box">
                 <i data-lucide="search"></i>
-                <input type="text" id="search-arquivos" placeholder="Buscar arquivos..." class="form-control" />
+                <input type="text" id="search-licenciamento" placeholder="Buscar arquivos..." class="form-control" />
               </div>
-              <button class="btn btn-primary" id="btn-novo-arquivo">
+              <button class="btn btn-primary" id="btn-novo-licenciamento">
                 <i data-lucide="plus"></i> Novo Arquivo
               </button>
             </div>
@@ -74,10 +80,52 @@
                     <th>Ações</th>
                   </tr>
                 </thead>
-                <tbody id="arquivos-list">
+                <tbody id="licenciamento-list">
                   <tr><td colspan="5" class="text-center">Carregando...</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Fiscalização Module -->
+          <div id="module-fiscalizacao" class="module hidden">
+            <div class="module-header">
+              <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="search-fiscalizacao" placeholder="Buscar registros..." class="form-control" />
+              </div>
+              <button class="btn btn-primary" id="btn-nova-fiscalizacao">
+                <i data-lucide="plus"></i> Novo Registro
+              </button>
+            </div>
+            
+            <div class="glass-panel mt-1">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Categoria</th>
+                    <th>Título/Descrição</th>
+                    <th>Arquivos</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="fiscalizacao-list">
+                  <tr><td colspan="5" class="text-center">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Educação Ambiental Module -->
+          <div id="module-educacao" class="module hidden">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh;">
+              <div class="glass-panel p-2 text-center" style="max-width: 400px; width: 100%;">
+                <i data-lucide="flask-conical" style="width: 48px; height: 48px; color: var(--primary); margin-bottom: 15px;"></i>
+                <h2 style="font-size: 1.5rem; margin-bottom: 10px;">Educação Ambiental</h2>
+                <div style="display: inline-block; padding: 5px 15px; background: rgba(255,193,7,0.2); color: #ffca28; border: 1px solid rgba(255,193,7,0.3); border-radius: 20px; font-weight: bold; letter-spacing: 1px;">EM TESTE</div>
+                <p class="text-muted mt-1" style="font-size: 0.9rem;">Este módulo está em fase de desenvolvimento e testes.</p>
+              </div>
             </div>
           </div>
 

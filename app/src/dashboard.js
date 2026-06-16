@@ -3,6 +3,7 @@ import './dashboard.css';
 import { supabase } from './supabase.js';
 
 let currentUser = null;
+let currentModulo = 'Licenciamento';
 let editingAgendaId = null;
 let editingArquivoId = null;
 let editingTarefaId = null;
@@ -28,7 +29,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pageTitle = document.getElementById('page-title');
 
   const titles = {
-    'arquivos': 'Arquivos & Projetos',
+    'licenciamento': 'Licenciamento Ambiental',
+    'fiscalizacao': 'Fiscalização',
+    'educacao': 'Educação Ambiental',
     'agenda': 'Agenda de Compromissos',
     'tarefas': 'Tarefas Internas'
   };
@@ -46,7 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       pageTitle.textContent = titles[target];
       
-      if(target === 'arquivos') loadArquivos();
+      if(target === 'licenciamento') { currentModulo = 'Licenciamento'; loadArquivos(); }
+      if(target === 'fiscalizacao') { currentModulo = 'Fiscalização'; loadArquivos(); }
+      if(target === 'educacao') { currentModulo = 'Educação Ambiental'; }
       if(target === 'agenda') loadAgenda();
       if(target === 'tarefas') loadTarefas();
     });
@@ -66,20 +71,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 // --- Modals Setup ---
 function setupModals() {
   const modalArquivo = document.getElementById('modal-arquivo');
-  const btnNovoArquivo = document.getElementById('btn-novo-arquivo');
+  const btnNovoLicenciamento = document.getElementById('btn-novo-licenciamento');
+  const btnNovaFiscalizacao = document.getElementById('btn-nova-fiscalizacao');
   const closeArquivo = document.getElementById('close-modal-arquivo');
   const cancelArquivo = document.getElementById('cancel-arquivo');
 
-  btnNovoArquivo.addEventListener('click', () => {
+  const openModalArquivo = () => {
     editingArquivoId = null;
-    document.querySelector('#modal-arquivo h2').textContent = 'Novo Arquivo';
+    document.querySelector('#modal-arquivo h2').textContent = currentModulo === 'Fiscalização' ? 'Novo Registro de Fiscalização' : 'Novo Arquivo de Licenciamento';
     document.getElementById('form-arquivo').reset();
     document.getElementById('arquivo-arquivos').required = false;
-    // Auto fill pasta with year/month format
+    
+    const catSelect = document.getElementById('arquivo-categoria');
+    catSelect.innerHTML = '';
+    if (currentModulo === 'Fiscalização') {
+      const cats = ['Notificação', 'Auto de Constatação', 'Auto de Infração', 'Processo Administrativo Ambiental', 'Relatório de Fiscalização'];
+      cats.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
+    } else {
+      const cats = ['Dispensa de Licença', 'Licença de Instalação', 'Licença Prévia', 'Anuência Ambiental', 'Licença de Operação', 'Imagens de Drone', 'Projeto/Planta', 'Outros Documentos'];
+      cats.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
+    }
+
     const date = new Date();
     document.getElementById('arquivo-pasta').value = `${date.getFullYear()}/${date.toLocaleString('pt-BR', { month: 'long' })}`;
     modalArquivo.classList.add('active');
-  });
+  };
+
+  if(btnNovoLicenciamento) btnNovoLicenciamento.addEventListener('click', openModalArquivo);
+  if(btnNovaFiscalizacao) btnNovaFiscalizacao.addEventListener('click', openModalArquivo);
 
   closeArquivo.addEventListener('click', () => modalArquivo.classList.remove('active'));
   cancelArquivo.addEventListener('click', () => modalArquivo.classList.remove('active'));
@@ -112,21 +131,24 @@ function setupModals() {
     formAgenda.addEventListener('submit', handleNovoCompromisso);
   }
   
-  // Search Arquivos
-  const searchInput = document.getElementById('search-arquivos');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase();
-      const filtered = window.arquivosData.filter(item => 
-        (item.titulo && item.titulo.toLowerCase().includes(term)) || 
-        (item.descricao && item.descricao.toLowerCase().includes(term)) ||
-        (item.categoria && item.categoria.toLowerCase().includes(term)) ||
-        (item.profiles && item.profiles.nome_completo && item.profiles.nome_completo.toLowerCase().includes(term)) ||
-        (item.pasta_storage && item.pasta_storage.toLowerCase().includes(term))
-      );
-      renderArquivos(filtered);
-    });
-  }
+  // Search Arquivos/Registros
+  const handleSearch = (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = window.arquivosData.filter(item => 
+      (item.titulo && item.titulo.toLowerCase().includes(term)) || 
+      (item.descricao && item.descricao.toLowerCase().includes(term)) ||
+      (item.categoria && item.categoria.toLowerCase().includes(term)) ||
+      (item.profiles && item.profiles.nome_completo && item.profiles.nome_completo.toLowerCase().includes(term)) ||
+      (item.pasta_storage && item.pasta_storage.toLowerCase().includes(term))
+    );
+    renderArquivos(filtered);
+  };
+  
+  const searchLicenciamento = document.getElementById('search-licenciamento');
+  if (searchLicenciamento) searchLicenciamento.addEventListener('input', handleSearch);
+  
+  const searchFiscalizacao = document.getElementById('search-fiscalizacao');
+  if (searchFiscalizacao) searchFiscalizacao.addEventListener('input', handleSearch);
 
   // Tarefas Modal Setup
   const modalTarefa = document.getElementById('modal-tarefa');
@@ -164,8 +186,10 @@ function setupModals() {
 
 // --- Arquivos Logic ---
 async function loadArquivos() {
-  const listEl = document.getElementById('arquivos-list');
-  listEl.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
+  const listLicenciamento = document.getElementById('licenciamento-list');
+  const listFiscalizacao = document.getElementById('fiscalizacao-list');
+  if(listLicenciamento) listLicenciamento.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
+  if(listFiscalizacao) listFiscalizacao.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
   
   const { data, error } = await supabase
     .from('arquivos')
@@ -179,7 +203,8 @@ async function loadArquivos() {
   }
   
   if (!data || data.length === 0) {
-    listEl.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum arquivo registrado.</td></tr>';
+    if(listLicenciamento) listLicenciamento.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum registro encontrado.</td></tr>';
+    if(listFiscalizacao) listFiscalizacao.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum registro encontrado.</td></tr>';
     window.arquivosData = [];
     return;
   }
@@ -189,41 +214,51 @@ async function loadArquivos() {
 }
 
 function renderArquivos(dataToRender) {
-  const listEl = document.getElementById('arquivos-list');
-  if (!dataToRender || dataToRender.length === 0) {
-    listEl.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum arquivo encontrado para esta busca.</td></tr>';
-    return;
-  }
+  const listLicenciamento = document.getElementById('licenciamento-list');
+  const listFiscalizacao = document.getElementById('fiscalizacao-list');
+  
+  const licenciamentoData = dataToRender.filter(i => i.modulo === 'Licenciamento' || !i.modulo);
+  const fiscalizacaoData = dataToRender.filter(i => i.modulo === 'Fiscalização');
 
-  listEl.innerHTML = '';
-  dataToRender.forEach(item => {
-    const tr = document.createElement('tr');
-    const dateStr = new Date(item.data_registro).toLocaleDateString('pt-BR');
-    const uploaderName = item.profiles ? item.profiles.nome_completo : 'Usuário';
-    
-    tr.innerHTML = `
-      <td>${dateStr}</td>
-      <td><span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">${item.categoria || 'Outros'}</span></td>
-      <td>
-        <strong>${item.titulo}</strong>
-        ${item.descricao ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 0 0;">${item.descricao}</p>` : ''}
-        <small class="text-muted" style="display:block; margin-top:2px;">Por: ${uploaderName}</small>
-      </td>
-      <td>
-        ${item.pasta_storage ? 
-          `<button class="btn-icon" title="Ver Arquivos" onclick="viewFiles('${item.pasta_storage}')"><i data-lucide="folder"></i> ${item.pasta_storage}</button>` : 
-          `<span class="text-muted">-</span>`
-        }
-      </td>
-      <td>
-        <div style="display: flex; gap: 5px;">
-          <button class="btn-icon" title="Editar" onclick="editArquivo('${item.id}')"><i data-lucide="edit"></i></button>
-          <button class="btn-icon text-danger" title="Apagar" onclick="deleteArquivo('${item.id}')"><i data-lucide="trash"></i></button>
-        </div>
-      </td>
-    `;
-    listEl.appendChild(tr);
-  });
+  const buildRows = (items, listEl) => {
+    if(!listEl) return;
+    if (items.length === 0) {
+      listEl.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum registro encontrado para esta busca.</td></tr>';
+      return;
+    }
+    listEl.innerHTML = '';
+    items.forEach(item => {
+      const tr = document.createElement('tr');
+      const dateStr = new Date(item.data_registro).toLocaleDateString('pt-BR');
+      const uploaderName = item.profiles ? item.profiles.nome_completo : 'Usuário';
+      
+      tr.innerHTML = `
+        <td>${dateStr}</td>
+        <td><span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">${item.categoria || 'Outros'}</span></td>
+        <td>
+          <strong>${item.titulo}</strong>
+          ${item.descricao ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 0 0;">${item.descricao}</p>` : ''}
+          <small class="text-muted" style="display:block; margin-top:2px;">Por: ${uploaderName}</small>
+        </td>
+        <td>
+          ${item.pasta_storage ? 
+            `<button class="btn-icon" title="Ver Arquivos" onclick="viewFiles('${item.pasta_storage}')"><i data-lucide="folder"></i> ${item.pasta_storage}</button>` : 
+            `<span class="text-muted">-</span>`
+          }
+        </td>
+        <td>
+          <div style="display: flex; gap: 5px;">
+            <button class="btn-icon" title="Editar" onclick="editArquivo('${item.id}')"><i data-lucide="edit"></i></button>
+            <button class="btn-icon text-danger" title="Apagar" onclick="deleteArquivo('${item.id}')"><i data-lucide="trash"></i></button>
+          </div>
+        </td>
+      `;
+      listEl.appendChild(tr);
+    });
+  };
+
+  buildRows(licenciamentoData, listLicenciamento);
+  buildRows(fiscalizacaoData, listFiscalizacao);
   
   if(window.lucide) window.lucide.createIcons();
 }
@@ -289,7 +324,8 @@ async function handleNovoArquivo(e) {
           titulo: titulo, 
           descricao: descricao,
           categoria: categoria,
-          pasta_storage: pasta
+          pasta_storage: pasta,
+          modulo: currentModulo
         })
         .eq('id', editingArquivoId);
 
@@ -303,6 +339,7 @@ async function handleNovoArquivo(e) {
             descricao: descricao,
             categoria: categoria,
             pasta_storage: pasta,
+            modulo: currentModulo,
             user_id: currentUser.id,
             status: 'Pendente'
           }
