@@ -74,7 +74,7 @@ function setupModals() {
     editingArquivoId = null;
     document.querySelector('#modal-arquivo h2').textContent = 'Novo Arquivo';
     document.getElementById('form-arquivo').reset();
-    document.getElementById('arquivo-arquivos').required = true;
+    document.getElementById('arquivo-arquivos').required = false;
     // Auto fill pasta with year/month format
     const date = new Date();
     document.getElementById('arquivo-pasta').value = `${date.getFullYear()}/${date.toLocaleString('pt-BR', { month: 'long' })}`;
@@ -242,10 +242,10 @@ async function handleNovoArquivo(e) {
   // Combine all files from both inputs
   const allFiles = [...filesAvulsos, ...filesPasta];
   
-  if (!editingArquivoId && allFiles.length === 0) {
-    alert('Selecione pelo menos um arquivo ou pasta.');
-    return;
-  }
+  // if (!editingArquivoId && allFiles.length === 0) {
+  //   alert('Selecione pelo menos um arquivo ou pasta.');
+  //   return;
+  // }
 
   // Sanitize folder path
   pasta = pasta.trim().replace(/[^a-zA-Z0-9/_-]/g, '_');
