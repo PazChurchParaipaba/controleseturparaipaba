@@ -88,7 +88,7 @@ function setupModals() {
       const cats = ['Notificação', 'Auto de Constatação', 'Auto de Infração', 'Processo Administrativo Ambiental', 'Relatório de Fiscalização'];
       cats.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
     } else {
-      const cats = ['Dispensa de Licença', 'Licença de Instalação', 'Licença Prévia', 'Anuência Ambiental', 'Licença de Operação', 'Imagens de Drone', 'Projeto/Planta', 'Outros Documentos'];
+      const cats = ['Dispensa de Licença', 'Licença de Instalação', 'Licença Prévia', 'Anuência Ambiental', 'Licença de Operação', 'Obras Públicas', 'Imagens de Drone', 'Projeto/Planta', 'Outros Documentos'];
       cats.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
     }
 
